@@ -264,6 +264,13 @@ def main(argv: list[str] | None = None) -> int:
         print("  cost: billed per Start+Run minute; timeout is a DURATION cap, not spend.")
         return 0
 
+    # Pre-create the OUTPUT model repo so the job's upload step succeeds.
+    # (The input dataset repo is created by upload_video; the job cannot
+    # create its own output repo because inside the container the HF token
+    # scope may not cover repo creation on this namespace.)
+    print(f"[ckpt] creating output repo https://huggingface.co/{ckpt_repo}")
+    api.create_repo(ckpt_repo, repo_type="model", private=True, exist_ok=True)
+
     job_id = submit(
         api, namespace, src_repo, video_file, ckpt_repo,
         frames=args.frames, iterations=args.iterations,
