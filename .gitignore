@@ -6,3 +6,9 @@ venv/
 outputs/
 *.ply
 .DS_Store
+*.png
+*.jpg
+*.jpeg
+test-*.mp4
+video_*.mp4
+thumbnails/
