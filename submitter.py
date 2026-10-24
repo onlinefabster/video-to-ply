@@ -142,6 +142,12 @@ def submit(
     }
     secrets = {"HF_TOKEN": require_token()}
 
+    # Ensure the OUTPUT model repo exists before the job tries to upload to it.
+    # (The job's bootstrap uploads splat.ply here; it cannot create the repo
+    # itself. This covers BOTH the CLI and the Gradio app paths.)
+    print(f"[ckpt] ensuring output repo https://huggingface.co/{ckpt_repo}")
+    api.create_repo(ckpt_repo, repo_type="model", private=True, exist_ok=True)
+
     print(f"[job] submitting (namespace={namespace}, flavor={flavor}, timeout={timeout})")
     print(f"[ckpt] .ply will land in https://huggingface.co/{ckpt_repo}")
 
@@ -263,13 +269,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  ckpt repo:   https://huggingface.co/{ckpt_repo}")
         print("  cost: billed per Start+Run minute; timeout is a DURATION cap, not spend.")
         return 0
-
-    # Pre-create the OUTPUT model repo so the job's upload step succeeds.
-    # (The input dataset repo is created by upload_video; the job cannot
-    # create its own output repo because inside the container the HF token
-    # scope may not cover repo creation on this namespace.)
-    print(f"[ckpt] creating output repo https://huggingface.co/{ckpt_repo}")
-    api.create_repo(ckpt_repo, repo_type="model", private=True, exist_ok=True)
 
     job_id = submit(
         api, namespace, src_repo, video_file, ckpt_repo,
