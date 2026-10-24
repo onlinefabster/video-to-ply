@@ -31,20 +31,23 @@ PLY=$(ls ./exports/*.ply | head -1)
 echo "[bootstrap] generated: $PLY"
 
 # 5. Upload the result to the model repo so the submitter can fetch it.
+# The Nerfstudio image has NO plain `pip` binary, but `python3 -m pip` works.
+# huggingface_hub is not preinstalled, so install it, then use its commit+LFS-
+# aware upload_file (a raw HTTP PUT to the hub no longer works — 404).
 echo "[bootstrap] uploading $PLY -> $CKPT_REPO"
-pip install -q huggingface_hub
+python3 -m pip install -q --disable-pip-version-check huggingface_hub
 PLY="$PLY" CKPT_REPO="$CKPT_REPO" python3 - <<'PY'
 import os
-from huggingface_hub import HfApi
+from huggingface_hub import upload_file
 ply = os.environ["PLY"]
 repo = os.environ["CKPT_REPO"]
-HfApi().upload_file(
+info = upload_file(
     path_or_fileobj=ply,
     path_in_repo="splat.ply",
     repo_id=repo,
     repo_type="model",
 )
-print(f"[bootstrap] uploaded splat.ply to {repo}")
+print(f"[bootstrap] uploaded splat.ply to {repo} ({getattr(info, 'commit_url', '')})")
 PY
 
 echo "[bootstrap] done"
