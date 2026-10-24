@@ -32,6 +32,7 @@ echo "[bootstrap] generated: $PLY"
 
 # 5. Upload the result to the model repo so the submitter can fetch it.
 echo "[bootstrap] uploading $PLY -> $CKPT_REPO"
+pip install -q huggingface_hub
 PLY="$PLY" CKPT_REPO="$CKPT_REPO" python3 - <<'PY'
 import os
 from huggingface_hub import HfApi
