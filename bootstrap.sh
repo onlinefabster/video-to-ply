@@ -29,6 +29,26 @@ print("[bootstrap] wget + superpoint setup done")
 PY
 export PYTHONPATH=/work${PYTHONPATH:+:$PYTHONPATH}
 
+# hloc 1.4 calls pycolmap.verify_matches with old kwargs (max_num_trials,
+# min_inlier_ratio) that pycolmap>=0.6 dropped for TwoViewGeometryOptions.
+# Patch the single call site to the 0.6-compatible no-args form at runtime.
+HLOC_TRI=/usr/local/lib/python3.10/dist-packages/hloc/triangulation.py
+python3 - "$HLOC_TRI" <<'PY'
+import sys
+p = sys.argv[1]
+s = open(p).read()
+old = """            pycolmap.verify_matches(
+                database_path, pairs_path,
+                max_num_trials=20000, min_inlier_ratio=0.1)"""
+new = """            pycolmap.verify_matches(
+                str(database_path), str(pairs_path))"""
+if old in s:
+    open(p, "w").write(s.replace(old, new))
+    print("[bootstrap] patched hloc verify_matches for pycolmap>=0.6")
+else:
+    print("[bootstrap] verify_matches already patched/absent")
+PY
+
 # 1+2. Extract frames + run SfM (ns-process-data wraps both).
 # Use HLoc with SuperPoint features + SuperGlue matcher: learned deep
 # features dramatically out-register stock COLMAP/SIFT for ordered video
