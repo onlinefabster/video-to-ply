@@ -7,13 +7,27 @@ set -euo pipefail
 echo "[bootstrap] video=$VIDEO_FILE frames=$NUM_FRAMES iters=$ITERATIONS"
 mkdir -p /work && cd /work
 
-# HLoc's superglue matcher needs the SuperGluePretrainedNetwork repo (missing
-# from the image). It's not on PyPI — clone it and put it on the import path so
-# `from SuperGluePretrainedNetwork.models import superpoint` resolves. The repo
-# dir name must stay exactly `SuperGluePretrainedNetwork` (namespace package).
-git clone -q --depth 1 https://github.com/magicleap/SuperGluePretrainedNetwork /work/SuperGluePretrainedNetwork
+# hloc needs `wget` to fetch NetVLAD/SuperPoint weights; the image lacks it and
+# the package index is empty until `apt-get update`. Also lacks `git`, and its
+# SuperGluePretrainedNetwork dependency is neither pip-installable nor importable
+# via a plain PYTHONPATH (namespace-package quirk: works only at sys.path[0]).
+# So: install wget, pull the source tarball, and drop a sitecustomize.py that
+# force-inserts /work at the front of sys.path for EVERY python subprocess.
+apt-get update -qq >/dev/null 2>&1
+DEBIAN_FRONTEND=noninteractive apt-get install -y -qq wget >/dev/null 2>&1
+python3 - <<'PY'
+import urllib.request, tarfile, os
+URL = "https://github.com/magicleap/SuperGluePretrainedNetwork/archive/refs/heads/master.tar.gz"
+urllib.request.urlretrieve(URL, "/tmp/sg.tar.gz")
+with tarfile.open("/tmp/sg.tar.gz") as t:
+    t.extractall("/work")
+d = "/work/SuperGluePretrainedNetwork"
+if not os.path.isdir(d):
+    os.rename("/work/SuperGluePretrainedNetwork-master", d)
+open("/work/sitecustomize.py", "w").write('import sys; sys.path.insert(0, "/work")\n')
+print("[bootstrap] wget + superpoint setup done")
+PY
 export PYTHONPATH=/work${PYTHONPATH:+:$PYTHONPATH}
-python3 -c "import SuperGluePretrainedNetwork.models.superpoint; print('[bootstrap] superpoint OK')"
 
 # 1+2. Extract frames + run SfM (ns-process-data wraps both).
 # Use HLoc with SuperPoint features + SuperGlue matcher: learned deep
