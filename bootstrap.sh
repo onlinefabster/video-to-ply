@@ -7,12 +7,18 @@ set -euo pipefail
 echo "[bootstrap] video=$VIDEO_FILE frames=$NUM_FRAMES iters=$ITERATIONS"
 mkdir -p /work && cd /work
 
-# 1+2. Extract frames + run COLMAP (ns-process-data wraps both).
-echo "[bootstrap] extracting frames + COLMAP"
+# 1+2. Extract frames + run SfM (ns-process-data wraps both).
+# `--matching-method sequential` keeps the camera lock frame-to-frame for
+# ordered video, preventing the mis-estimated "bowed arc" trajectory that
+# bends the room around the camera. `--num-downscales 1` keeps images
+# higher-res so more matchable features survive for robust registration.
+echo "[bootstrap] extracting frames + SfM (sequential matching, low downscale)"
 ns-process-data video \
   --data "/src/$VIDEO_FILE" \
   --output-dir ./processed \
-  --num-frames-target "$NUM_FRAMES"
+  --num-frames-target "$NUM_FRAMES" \
+  --matching-method sequential \
+  --num-downscales 1
 
 # 3. Train the Gaussian splat.
 echo "[bootstrap] training splatfacto"
