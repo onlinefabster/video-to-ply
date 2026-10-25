@@ -7,6 +7,14 @@ set -euo pipefail
 echo "[bootstrap] video=$VIDEO_FILE frames=$NUM_FRAMES iters=$ITERATIONS"
 mkdir -p /work && cd /work
 
+# HLoc's superglue matcher needs the SuperGluePretrainedNetwork repo (missing
+# from the image). It's not on PyPI — clone it and put it on the import path so
+# `from SuperGluePretrainedNetwork.models import superpoint` resolves. The repo
+# dir name must stay exactly `SuperGluePretrainedNetwork` (namespace package).
+git clone -q --depth 1 https://github.com/magicleap/SuperGluePretrainedNetwork /work/SuperGluePretrainedNetwork
+export PYTHONPATH=/work${PYTHONPATH:+:$PYTHONPATH}
+python3 -c "import SuperGluePretrainedNetwork.models.superpoint; print('[bootstrap] superpoint OK')"
+
 # 1+2. Extract frames + run SfM (ns-process-data wraps both).
 # Use HLoc with SuperPoint features + SuperGlue matcher: learned deep
 # features dramatically out-register stock COLMAP/SIFT for ordered video
